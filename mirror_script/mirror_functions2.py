@@ -4,6 +4,7 @@ from multiprocessing import Pool
 import csv
 import subprocess
 import time
+import sys
 
 subDirectoryList = []
 output_dir = ""
@@ -70,46 +71,46 @@ def get_filepath(filename):
     filepath = output_dir + "/" + filename
     return filepath
 
-def get_output_dir():
-    with open('output_dir.txt', 'rt') as fileR1:
-        output_dir = fileR1.read();
-    fileR1.close()
-    os.remove('output_dir.txt')
-    return output_dir
-
-def get_mirror_dir():
-    with open('mirror_dir.txt', 'rt') as fileR2:
-        mirror_dir = fileR2.read();
-    fileR2.close()
-    os.remove('mirror_dir.txt')
-    return mirror_dir
-
-def get_copy_or_csv():
-    with open('copy_or_csv.txt', 'rt') as fileR3:
-        copy_or_csv = fileR3.read();
-    fileR3.close()
-    os.remove('copy_or_csv.txt')
-    return copy_or_csv
-
-def get_filename():
-    with open('filename.txt', 'rt') as fileR4:
-        filename = fileR4.read();
-    fileR4.close()
-    os.remove('filename.txt')
-    return filename
+# def get_output_dir():
+#     with open('output_dir.txt', 'rt') as fileR1:
+#         output_dir = fileR1.read();
+#     fileR1.close()
+#     os.remove('output_dir.txt')
+#     return output_dir
+#
+# def get_mirror_dir():
+#     with open('mirror_dir.txt', 'rt') as fileR2:
+#         mirror_dir = fileR2.read();
+#     fileR2.close()
+#     os.remove('mirror_dir.txt')
+#     return mirror_dir
+#
+# def get_copy_or_csv():
+#     with open('copy_or_csv.txt', 'rt') as fileR3:
+#         copy_or_csv = fileR3.read();
+#     fileR3.close()
+#     os.remove('copy_or_csv.txt')
+#     return copy_or_csv
+#
+# def get_filename():
+#     with open('filename.txt', 'rt') as fileR4:
+#         filename = fileR4.read();
+#     fileR4.close()
+#     os.remove('filename.txt')
+#     return filename
 
 
 if __name__=="__main__":
 
     start_time = time.time()
 
-    output_dir = get_output_dir()
+    output_dir = sys.argv[1]
     print("output dir " + output_dir)
-    mirror_dir = get_mirror_dir()
+    mirror_dir = sys.argv[2]
     print("mirror_dir " + mirror_dir)
-    copy_or_csv = get_copy_or_csv()
+    copy_or_csv = sys.argv[3]
     print("copy_or_csv " + copy_or_csv)
-    filename = get_filename()
+    filename = sys.argv[4]
     print("filename " + filename)
 
     subDirectoryList = get_immediate_subdirectories()

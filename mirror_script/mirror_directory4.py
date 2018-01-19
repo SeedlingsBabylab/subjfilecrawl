@@ -88,23 +88,23 @@ class mirror_directory(object):
         self.filename.configure(state="disabled")
         self.filename.update()
 
-    def write_copy_or_csv(self):
-        with open('copy_or_csv.txt', 'w') as fileW:
-            fileW.write(self.copy_or_csv.get())
-        fileW.close()
-
-    def write_filename(self):
-        with open('filename.txt', 'w') as fileW:
-            fileW.write(self.filename.get())
-        fileW.close()
+    # def write_copy_or_csv(self):
+    #     with open('copy_or_csv.txt', 'w') as fileW:
+    #         fileW.write(self.copy_or_csv.get())
+    #     fileW.close()
+    #
+    # def write_filename(self):
+    #     with open('filename.txt', 'w') as fileW:
+    #         fileW.write(self.filename.get())
+    #     fileW.close()
 
     def call_mirror_functions(self):
-        self.write_filename()
-        self.write_copy_or_csv()
+        # self.write_filename()
+        # self.write_copy_or_csv()
         if not self.filename.get()and self.copy_or_csv.get()=='csv':
             tkMessageBox.showinfo("Error", "You must provide a name for your file!")
             return
-        subprocess.call(['python3', os.path.join('mirror_script','mirror_functions2.py')])
+        subprocess.call(['python3', os.path.join('mirror_script','mirror_functions2.py'), self.output_dir, self.mirror_dir, self.copy_or_csv.get(), self.filename.get()])
 
     def choose_directory(self, dir_type):
         if dir_type == "output":
@@ -112,17 +112,17 @@ class mirror_directory(object):
             self.output_dir =  tkfiledialog.askdirectory(**self.output_dir_opt)
             # update the GUI to reflect the change
             self.current_output_dir["text"] = self.output_dir
-            with open('output_dir.txt', 'w') as fileW1:
-                fileW1.write(self.output_dir)
-            fileW1.close()
+            # with open('output_dir.txt', 'w') as fileW1:
+            #     fileW1.write(self.output_dir)
+            # fileW1.close()
         else:
             # save the mirror directory
             self.mirror_dir = tkfiledialog.askdirectory(**self.mirror_dir_opt)
             # update the GUI to reflect the change
             self.current_mirror_dir["text"] = self.mirror_dir
-            with open('mirror_dir.txt', 'w') as fileW2:
-                fileW2.write(self.mirror_dir)
-            fileW2.close()
+            # with open('mirror_dir.txt', 'w') as fileW2:
+            #     fileW2.write(self.mirror_dir)
+            # fileW2.close()
 
 
 if __name__=="__main__":
