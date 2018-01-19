@@ -11,7 +11,7 @@ import os
 import re
 import shutil
 # from pip._vendor.distlib.util import CSVWriter
-import mirror_script.mirror_directory as mirror
+import mirror_script.mirror_directory4 as mirror
 
 
 debug = False
@@ -476,7 +476,7 @@ class crawl_subject_GUI(object):
         x = self.save_filename.strip()
         if not re.match("(.csv)$", self.save_filename):
             x+=".csv"
-        with open(self.output_dir+'/'+x, 'a') as f:
+        with open(self.output_dir+'/'+x, 'a+') as f:
             writer = csv.writer(f)
             writer.writerow(["full path", "file name"])
             for item in lst:
@@ -496,7 +496,8 @@ class crawl_subject_GUI(object):
             for tup in lst:
                 filepath = tup[0]
                 drive, localdir = os.path.splitdrive(filepath)
-                savepath = os.path.join(self.output_dir,os.path.normpath(os.path.dirname(localdir)).lstrip(r"\\").lstrip("/"))
+                localdir = os.path.normpath(os.path.dirname(localdir).replace(self.crawl_dir, "")).lstrip(r"\\").lstrip("/")
+                savepath = os.path.join(self.output_dir,os.path.basename(self.crawl_dir),localdir)
                 try:
                     with open(savepath) as f: pass
                 except IOError as e:
