@@ -6,15 +6,37 @@ except ImportError:
     import tkinter as tk  # for python3
     import tkinter.filedialog as tkfiledialog
     import tkinter.messagebox as tkMessageBox
+try:
+   import cPickle as pickle
+except:
+   import pickle
 import csv
 import os
 import re
 import shutil
+import subprocess
 # from pip._vendor.distlib.util import CSVWriter
 import mirror_script.mirror_directory4 as mirror
 
 
 debug = False
+
+class fake_object:
+    def __init__(self, box, cdir, endm, startm, chosub, c_csv, filen, outdir, a_clan, v_data, a_wav, custom, r_scan, d_keep):
+        self.checked_boxes = box
+        self.crawl_dir = cdir
+        self.end_month_var = endm
+        self.start_month_var = startm
+        self.chosen_subjects = chosub
+        self.copy_or_csv = c_csv
+        self.filename = filen
+        self.output_dir = outdir
+        self.audio_clan = a_clan
+        self.video_datavyu = v_data
+        self.audio_wav = a_wav
+        self.custom_regex = custom
+        self.recurse_or_scan = r_scan
+        self.dump_or_keep = d_keep
 
 class crawl_subject_GUI(object):
     def __init__(self, master):
@@ -77,9 +99,37 @@ class crawl_subject_GUI(object):
         self.choose_files_button = tk.Button(master, text="Choose file types", command = lambda:self.file_type_chooser())
         self.choose_files_button.pack(anchor='center')
         # start process
-        self.start_button = tk.Button(master, text="start", command = lambda: self.crawl_files(self.crawl_dir))
+        # self.start_button = tk.Button(master, text="start", command = lambda: self.crawl_files(self.crawl_dir))
+        self.start_button = tk.Button(master, text="start", command = lambda: self.multi_call())
         #self.start_button.config(state="disable")
         self.start_button.pack(side=tk.BOTTOM, pady=(10,0))
+
+    def multi_call(self):
+        #fake_obj = fake_object(self.checked_boxes, self.crawl_dir, self.end_month_var.get(), self.start_month_var.get(), self.chosen_subjects, self.copy_or_csv.get(), self.filename.get(), self.output_dir, self.audio_clan_type.get(), self.video_datavyu_type.get(), self.audio_wav_type.get(), self.custom_regex_text.get(), self.recurse_or_scan.get(), self.dump_or_keep.get())
+        box = self.checked_boxes
+        cdir = self.crawl_dir
+        endm = self.end_month_var.get()
+        startm = self.start_month_var.get()
+        chosub = self.chosen_subjects
+        c_csv = self.copy_or_csv.get()
+        filen = self.filename.get()
+        outdir = self.output_dir
+        a_clan = 0
+        v_data = 0
+        a_wav = 0
+        custom = 0
+        if "audio_clan" in self.checked_boxes:
+            a_clan = self.audio_clan_type.get()
+        if "video_datavyu" in self.checked_boxes:
+            v_data = self.video_datavyu_type.get()
+        if "audio_wav" in self.checked_boxes:
+            a_wav = self.audio_wav_type.get()
+        if "custom_regex" in self.checked_boxes:
+            custom = self.custom_regex_text.get()
+        r_scan = self.recurse_or_scan.get()
+        d_keep = self.dump_or_keep.get()
+        fake_obj = fake_object(box, cdir, endm, startm, chosub, c_csv, filen, outdir, a_clan, v_data, a_wav, custom, r_scan, d_keep)
+        subprocess.call(['python', 'crawl_function.py', pickle.dumps(fake_obj)])
 
     def file_type_chooser(self):
         window = tk.Toplevel(root)
@@ -386,175 +436,175 @@ class crawl_subject_GUI(object):
         self.audio_wav_type.set("scrubbed")
 
 
-    def crawl_files(self, file_or_dirname):
-        #self.start_button.config(state="disable")
-        if len(self.checked_boxes)==0:
-            tkMessageBox.showinfo("Error", "You must select some file types!")
-            self.file_type_chooser()
-            return
-        self.tups=[]
-        if self.recurse_or_scan.get():
-            if not file_or_dirname.endswith('.csv'):
-                tkMessageBox.showinfo("Error", "You must provide a csv file to scan or uncheck the top box.")
-                return
-            self.crawl_files_from_csv(file_or_dirname)
-        else:
-            if not os.path.isdir(file_or_dirname):
-                tkMessageBox.showinfo("Error", "You must provide a directory to crawl.")
-                return
-            self.crawl_files_recursive(file_or_dirname)
-
-    def crawl_files_from_csv(self, filename):
-        with open(filename, 'r') as f:
-            reader = csv.reader(f, delimiter=',', )
-            next(reader, None)
-            for row in reader:
-                # filtering by month
-                m = re.search(r'[0-9]{2}_[0-9]{2}/', row[0])
-                if re.search(r'[0-9]{2}_[0-9]{2}/', row[0]):
-                    splt = m.group(0).split("_")
-                    month = int(splt[1].strip('/'))
-                    if month > int(self.end_month_var.get()) or month < int(self.start_month_var.get()):
-                        continue
-                # filtering by subject
-                n = re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', row[0])
-                if re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', row[0]):
-                    splt = n.group(0).split("_")
-                    subject = int(splt[0])
-                    if subject not in self.chosen_subjects:
-                        continue
-                self.update_tups(row[0], row[1])
-            # once done
-            if self.copy_or_csv.get()=="copy":
-                self.copy_files(self.tups)
-            else:
-                self.copy_to_csv(self.tups)
-
-    def crawl_files_recursive(self, dirname):
-        # if the save file name is empty and you want a csv
-        if not self.filename.get() and self.copy_or_csv.get()=="csv":
-            tkMessageBox.showinfo("Error", "You must provide a name for your file!")
-            return
-        # for each item in this directory
-        try:
-            for sub in os.listdir(dirname):
-                path = os.path.join(dirname, sub)
-                # if the current item is a directory, recurse
-                if os.path.isdir(path):
-                    # only recurse into dirs that lie within specified month ranges
-                    if re.match(r'[0-9]{2}_[0-9]{2}$', sub):
-                        splt = sub.split("_")
-                        month = int(splt[1])
-                        if month > int(self.end_month_var.get()) or month < int(self.start_month_var.get()):
-                            continue
-                    if re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', sub):
-                        splt = sub.split("_")
-                        subject = int(splt[0])
-                        if subject not in self.chosen_subjects:
-                            continue
-                    self.crawl_files_recursive(path)
-                # else, here's a file to check
-                else:
-                    #self.tups.append((str(path), str(sub)))
-                    # add file paths to tups if it fits criteria
-                    self.update_tups(path, sub)
-        # this only happens if we don't have permissions to files
-        except OSError as e:
-            print(e)
-        # once all of the items in the top level directory have been searched, we're done
-        if dirname==self.crawl_dir:
-            if self.copy_or_csv.get()=="copy":
-                self.copy_files(self.tups)
-            else:
-                self.copy_to_csv(self.tups)
-
-
-    def copy_to_csv(self, lst):
-        if len(lst)==0:
-            tkMessageBox.showinfo("Error", "No files of the selected type exist in your chosen directory!")
-            return
-        x = self.save_filename.strip()
-        if not re.match("(.csv)$", self.save_filename):
-            x+=".csv"
-        with open(self.output_dir+'/'+x, 'a+') as f:
-            writer = csv.writer(f)
-            writer.writerow(["full path", "file name"])
-            for item in lst:
-                writer.writerow(item)
-        tkMessageBox.showinfo("Completed", "Directory successfully copied to csv!")
-
-    def copy_files(self, lst):
-        if len(lst)==0:
-            tkMessageBox.showinfo("Error", "No files of the selected type exist in your chosen directory!")
-            return
-        if self.dump_or_keep.get():
-            for tup in lst:
-                filepath = tup[0]
-                savepath = self.output_dir
-                shutil.copy(filepath, savepath)
-        else:
-            for tup in lst:
-                filepath = tup[0]
-                drive, localdir = os.path.splitdrive(filepath)
-                localdir = os.path.normpath(os.path.dirname(localdir).replace(self.crawl_dir, "")).lstrip(r"\\").lstrip("/")
-                savepath = os.path.join(self.output_dir,os.path.basename(self.crawl_dir),localdir)
-                try:
-                    with open(savepath) as f: pass
-                except IOError as e:
-                    if not os.path.exists(savepath):
-                        os.makedirs(savepath)
-                    shutil.copy(filepath, savepath)
-        tkMessageBox.showinfo("Completed", "Directory successfully copied!")
-
-    def update_tups(self, path, sub):
-        if "audio_basic" in self.checked_boxes:
-            if os.path.dirname(path).endswith('Audio_Analysis'):
-                if re.search(r'sparse_code.csv$', sub):
-                    self.tups.append((str(path), str(sub)))
-        if "video_basic" in self.checked_boxes:
-            if os.path.dirname(path).endswith('Video_Analysis'):
-                if re.search(r'sparse_code.csv$', sub):
-                    self.tups.append((str(path), str(sub)))
-        if "silences" in self.checked_boxes:
-            if re.search(r'silences\.txt$', sub):
-                self.tups.append((str(path), str(sub)))
-        if "lena5min" in self.checked_boxes:
-            if re.search(r'lena5min\.csv$', sub):
-                self.tups.append((str(path), str(sub)))
-        if "video_mp4" in self.checked_boxes:
-            if re.search(r'\.mp4$', sub):
-                self.tups.append((str(path), str(sub)))
-        if "audio_clan" in self.checked_boxes:
-            if self.audio_clan_type.get()=='final':
-                if os.path.dirname(path).endswith('Audio_Annotation'):
-                    if re.search(r'(cex|cha)$', sub):
-                        self.tups.append((str(path), str(sub)))
-            if self.audio_clan_type.get()=="newclan_merged_final":
-                if re.search(r'newclan_merged_final\.(cex|cha)$', sub):
-                    self.tups.append((str(path), str(sub)))
-            if self.audio_clan_type.get()=='newclan_merged':
-                if re.search(r'newclan_merged\.(cex|cha)$', sub):
-                    self.tups.append((str(path), str(sub)))
-            if self.audio_clan_type.get()=='silences':
-                if re.search(r'silences.*(cex|cha)$', sub):
-                    self.tups.append((str(path), str(sub)))
-        if "video_datavyu" in self.checked_boxes:
-            if self.video_datavyu_type.get()=='final':
-                if re.search(r'final\.(opf)$', sub):
-                    self.tups.append((str(path), str(sub)))
-            if self.video_datavyu_type.get()=='consensus':
-                if re.search(r'consensus\.(opf)$', sub):
-                    self.tups.append((str(path), str(sub)))
-        if "audio_wav" in self.checked_boxes:
-            if self.audio_wav_type.get()=='scrubbed':
-                if re.search(r'scrubbed.*wav$', sub):
-                    self.tups.append((str(path), str(sub)))
-            if self.audio_wav_type.get()=='unscrubbed':
-                if re.search(r'\.wav$', sub) and "scrubbed" not in sub:
-                    self.tups.append((str(path), str(sub)))
-        if "custom_regex" in self.checked_boxes:
-            if re.search(self.custom_regex_text.get(), sub):
-                self.tups.append((str(path), str(sub)))
+    # def crawl_files(self, file_or_dirname):
+    #     #self.start_button.config(state="disable")
+    #     if len(self.checked_boxes)==0:
+    #         tkMessageBox.showinfo("Error", "You must select some file types!")
+    #         self.file_type_chooser()
+    #         return
+    #     self.tups=[]
+    #     if self.recurse_or_scan.get():
+    #         if not file_or_dirname.endswith('.csv'):
+    #             tkMessageBox.showinfo("Error", "You must provide a csv file to scan or uncheck the top box.")
+    #             return
+    #         self.crawl_files_from_csv(file_or_dirname)
+    #     else:
+    #         if not os.path.isdir(file_or_dirname):
+    #             tkMessageBox.showinfo("Error", "You must provide a directory to crawl.")
+    #             return
+    #         self.crawl_files_recursive(file_or_dirname)
+    #
+    # def crawl_files_from_csv(self, filename):
+    #     with open(filename, 'r') as f:
+    #         reader = csv.reader(f, delimiter=',', )
+    #         next(reader, None)
+    #         for row in reader:
+    #             # filtering by month
+    #             m = re.search(r'[0-9]{2}_[0-9]{2}/', row[0])
+    #             if re.search(r'[0-9]{2}_[0-9]{2}/', row[0]):
+    #                 splt = m.group(0).split("_")
+    #                 month = int(splt[1].strip('/'))
+    #                 if month > int(self.end_month_var.get()) or month < int(self.start_month_var.get()):
+    #                     continue
+    #             # filtering by subject
+    #             n = re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', row[0])
+    #             if re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', row[0]):
+    #                 splt = n.group(0).split("_")
+    #                 subject = int(splt[0])
+    #                 if subject not in self.chosen_subjects:
+    #                     continue
+    #             self.update_tups(row[0], row[1])
+    #         # once done
+    #         if self.copy_or_csv.get()=="copy":
+    #             self.copy_files(self.tups)
+    #         else:
+    #             self.copy_to_csv(self.tups)
+    #
+    # def crawl_files_recursive(self, dirname):
+    #     # if the save file name is empty and you want a csv
+    #     if not self.filename.get() and self.copy_or_csv.get()=="csv":
+    #         tkMessageBox.showinfo("Error", "You must provide a name for your file!")
+    #         return
+    #     # for each item in this directory
+    #     try:
+    #         for sub in os.listdir(dirname):
+    #             path = os.path.join(dirname, sub)
+    #             # if the current item is a directory, recurse
+    #             if os.path.isdir(path):
+    #                 # only recurse into dirs that lie within specified month ranges
+    #                 if re.match(r'[0-9]{2}_[0-9]{2}$', sub):
+    #                     splt = sub.split("_")
+    #                     month = int(splt[1])
+    #                     if month > int(self.end_month_var.get()) or month < int(self.start_month_var.get()):
+    #                         continue
+    #                 if re.search(r'[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{4}', sub):
+    #                     splt = sub.split("_")
+    #                     subject = int(splt[0])
+    #                     if subject not in self.chosen_subjects:
+    #                         continue
+    #                 self.crawl_files_recursive(path)
+    #             # else, here's a file to check
+    #             else:
+    #                 #self.tups.append((str(path), str(sub)))
+    #                 # add file paths to tups if it fits criteria
+    #                 self.update_tups(path, sub)
+    #     # this only happens if we don't have permissions to files
+    #     except OSError as e:
+    #         print(e)
+    #     # once all of the items in the top level directory have been searched, we're done
+    #     if dirname==self.crawl_dir:
+    #         if self.copy_or_csv.get()=="copy":
+    #             self.copy_files(self.tups)
+    #         else:
+    #             self.copy_to_csv(self.tups)
+    #
+    #
+    # def copy_to_csv(self, lst):
+    #     if len(lst)==0:
+    #         tkMessageBox.showinfo("Error", "No files of the selected type exist in your chosen directory!")
+    #         return
+    #     x = self.save_filename.strip()
+    #     if not re.match("(.csv)$", self.save_filename):
+    #         x+=".csv"
+    #     with open(self.output_dir+'/'+x, 'a+') as f:
+    #         writer = csv.writer(f)
+    #         writer.writerow(["full path", "file name"])
+    #         for item in lst:
+    #             writer.writerow(item)
+    #     tkMessageBox.showinfo("Completed", "Directory successfully copied to csv!")
+    #
+    # def copy_files(self, lst):
+    #     if len(lst)==0:
+    #         tkMessageBox.showinfo("Error", "No files of the selected type exist in your chosen directory!")
+    #         return
+    #     if self.dump_or_keep.get():
+    #         for tup in lst:
+    #             filepath = tup[0]
+    #             savepath = self.output_dir
+    #             shutil.copy(filepath, savepath)
+    #     else:
+    #         for tup in lst:
+    #             filepath = tup[0]
+    #             drive, localdir = os.path.splitdrive(filepath)
+    #             localdir = os.path.normpath(os.path.dirname(localdir).replace(self.crawl_dir, "")).lstrip(r"\\").lstrip("/")
+    #             savepath = os.path.join(self.output_dir,os.path.basename(self.crawl_dir),localdir)
+    #             try:
+    #                 with open(savepath) as f: pass
+    #             except IOError as e:
+    #                 if not os.path.exists(savepath):
+    #                     os.makedirs(savepath)
+    #                 shutil.copy(filepath, savepath)
+    #     tkMessageBox.showinfo("Completed", "Directory successfully copied!")
+    #
+    # def update_tups(self, path, sub):
+    #     if "audio_basic" in self.checked_boxes:
+    #         if os.path.dirname(path).endswith('Audio_Analysis'):
+    #             if re.search(r'sparse_code.csv$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #     if "video_basic" in self.checked_boxes:
+    #         if os.path.dirname(path).endswith('Video_Analysis'):
+    #             if re.search(r'sparse_code.csv$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #     if "silences" in self.checked_boxes:
+    #         if re.search(r'silences\.txt$', sub):
+    #             self.tups.append((str(path), str(sub)))
+    #     if "lena5min" in self.checked_boxes:
+    #         if re.search(r'lena5min\.csv$', sub):
+    #             self.tups.append((str(path), str(sub)))
+    #     if "video_mp4" in self.checked_boxes:
+    #         if re.search(r'\.mp4$', sub):
+    #             self.tups.append((str(path), str(sub)))
+    #     if "audio_clan" in self.checked_boxes:
+    #         if self.audio_clan_type.get()=='final':
+    #             if os.path.dirname(path).endswith('Audio_Annotation'):
+    #                 if re.search(r'(cex|cha)$', sub):
+    #                     self.tups.append((str(path), str(sub)))
+    #         if self.audio_clan_type.get()=="newclan_merged_final":
+    #             if re.search(r'newclan_merged_final\.(cex|cha)$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #         if self.audio_clan_type.get()=='newclan_merged':
+    #             if re.search(r'newclan_merged\.(cex|cha)$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #         if self.audio_clan_type.get()=='silences':
+    #             if re.search(r'silences.*(cex|cha)$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #     if "video_datavyu" in self.checked_boxes:
+    #         if self.video_datavyu_type.get()=='final':
+    #             if re.search(r'final\.(opf)$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #         if self.video_datavyu_type.get()=='consensus':
+    #             if re.search(r'consensus\.(opf)$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #     if "audio_wav" in self.checked_boxes:
+    #         if self.audio_wav_type.get()=='scrubbed':
+    #             if re.search(r'scrubbed.*wav$', sub):
+    #                 self.tups.append((str(path), str(sub)))
+    #         if self.audio_wav_type.get()=='unscrubbed':
+    #             if re.search(r'\.wav$', sub) and "scrubbed" not in sub:
+    #                 self.tups.append((str(path), str(sub)))
+    #     if "custom_regex" in self.checked_boxes:
+    #         if re.search(self.custom_regex_text.get(), sub):
+    #             self.tups.append((str(path), str(sub)))
 
 
 
